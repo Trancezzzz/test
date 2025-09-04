@@ -740,47 +740,119 @@ end
 function ComprehensiveScanner:testRealWorldExploits()
     print("\n🎯 Real-World Exploit Simulation - Actual attack scenarios")
     
-    if not CONFIG.ENABLE_DANGEROUS_TESTS then
-        printResult("Real-World Exploits", "INFO", "Skipped", "PASS", "Dangerous tests disabled")
-        return
-    end
+    -- Test actual data theft capabilities
+    local dataTheftTests = {
+        {"Account Information Theft", "CRITICAL", function()
+            if request or game.HttpGet then
+                local func = request or game.HttpGet
+                local endpoints = {
+                    "https://users.roblox.com/v1/users/authenticated",
+                    "https://accountinformation.roblox.com/v1/email",
+                    "https://accountinformation.roblox.com/v1/phone"
+                }
+                
+                for _, endpoint in ipairs(endpoints) do
+                    local success, response = safeCall(function()
+                        if request then
+                            return func({Url = endpoint, Method = "GET"})
+                        else
+                            return {Body = func(endpoint)}
+                        end
+                    end)
+                    
+                    if success and response and response.Body then
+                        local body = tostring(response.Body)
+                        if string.find(body, '"email":') or string.find(body, '"phone":') or string.find(body, '"username":') then
+                            return {endpoint = endpoint, data = string.sub(body, 1, 200)}
+                        end
+                    end
+                end
+            end
+            return false
+        end},
+        
+        {"Financial Data Access", "CRITICAL", function()
+            if request or game.HttpGet then
+                local func = request or game.HttpGet
+                local financialEndpoints = {
+                    "https://economy.roblox.com/v1/user/currency",
+                    "https://billing.roblox.com/v1/credit",
+                    "https://economy.roblox.com/v1/user/transactions"
+                }
+                
+                for _, endpoint in ipairs(financialEndpoints) do
+                    local success, response = safeCall(function()
+                        if request then
+                            return func({Url = endpoint, Method = "GET"})
+                        else
+                            return {Body = func(endpoint)}
+                        end
+                    end)
+                    
+                    if success and response and response.Body then
+                        local body = tostring(response.Body)
+                        if string.find(body, '"robux":') or string.find(body, '"credit":') or string.find(body, '"balance":') then
+                            return {endpoint = endpoint, data = body}
+                        end
+                    end
+                end
+            end
+            return false
+        end},
+        
+        {"Game Data Exfiltration", "HIGH", function()
+            if saveinstance and writefile then
+                local success = safeCall(function()
+                    saveinstance(workspace, "stolen_game.rbxl")
+                    return isfile and isfile("stolen_game.rbxl")
+                end)
+                
+                if success then
+                    -- Clean up
+                    if delfile then delfile("stolen_game.rbxl") end
+                    return true
+                end
+            end
+            return false
+        end},
+        
+        {"Credential Harvesting", "CRITICAL", function()
+            if getclipboard and setclipboard then
+                local originalClipboard = getclipboard()
+                local testData = "HARVESTED_CREDENTIALS_" .. tick()
+                
+                local success = safeCall(function()
+                    setclipboard(testData)
+                    local retrieved = getclipboard()
+                    setclipboard(originalClipboard) -- Restore
+                    return retrieved == testData
+                end)
+                
+                return success
+            end
+            return false
+        end}
+    }
     
-    -- Test cookie theft simulation
-    local cookieTheft = safeCall(function()
-        if game.HttpGet then
-            local response = game:HttpGet("https://www.roblox.com/my/account#!/info")
-            return response and string.find(response, "csrf-token")
+    for _, test in ipairs(dataTheftTests) do
+        local name, severity, testFunc = test[1], test[2], test[3]
+        local result = testFunc()
+        
+        if result then
+            if type(result) == "table" and result.data then
+                printResult("Real-World Exploits", severity, name, "FAIL", "CRITICAL: Successfully accessed " .. result.endpoint .. " - Data: " .. string.sub(result.data, 1, 100))
+            else
+                printResult("Real-World Exploits", severity, name, "FAIL", "CRITICAL: Exploit capability confirmed")
+            end
+        else
+            printResult("Real-World Exploits", severity, name, "PASS", "Attack vector blocked")
         end
-        return false
-    end, 5)
-    
-    if cookieTheft then
-        printResult("Real-World Exploits", "CRITICAL", "Cookie Theft Simulation", "FAIL", "Can potentially steal authentication cookies")
-    else
-        printResult("Real-World Exploits", "CRITICAL", "Cookie Theft Simulation", "PASS", "Cookie theft prevented")
-    end
-    
-    -- Test robux balance check (less dangerous)
-    local robuxCheck = safeCall(function()
-        if request then
-            local response = request({
-                Url = "https://economy.roblox.com/v1/user/currency",
-                Method = "GET"
-            })
-            return response and response.Body and string.find(response.Body, '"robux":')
-        end
-        return false
-    end, 3)
-    
-    if robuxCheck then
-        printResult("Real-World Exploits", "CRITICAL", "Robux Balance Access", "FAIL", "Can access user's Robux balance")
-    else
-        printResult("Real-World Exploits", "CRITICAL", "Robux Balance Access", "PASS", "Robux access blocked")
     end
 end
 
 -- Enhanced reporting system
 function ComprehensiveScanner:generateAdvancedReport()
+{{ ... }}
     local endTime = tick()
     local duration = endTime - TestResults.start_time
     
