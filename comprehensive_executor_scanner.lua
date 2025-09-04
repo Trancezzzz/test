@@ -53,18 +53,20 @@ local function safeCall(func, timeout, ...)
     return success, result
 end
 
-local function addVulnerability(category, name, severity, description, exploit_code)
+local function addVulnerability(category, name, severity, description, exploit_code, impact, risk_assessment)
     table.insert(TestResults.vulnerabilities, {
         category = category,
         name = name,
         severity = severity,
         description = description,
         exploit_code = exploit_code,
+        impact = impact or "Unknown impact",
+        risk_assessment = risk_assessment or "Risk assessment not provided",
         timestamp = tick()
     })
 end
 
-local function printResult(category, severity, test_name, status, details, exploit_code)
+local function printResult(category, severity, test_name, status, details, exploit_code, impact, risk_assessment)
     TestResults.total = TestResults.total + 1
     
     if not TestResults.categories[category] then
@@ -81,7 +83,7 @@ local function printResult(category, severity, test_name, status, details, explo
         color_func = print
     elseif status == "FAIL" then
         TestResults.categories[category].failed = TestResults.categories[category].failed + 1
-        addVulnerability(category, test_name, severity, details, exploit_code)
+        addVulnerability(category, test_name, severity, details, exploit_code, impact, risk_assessment)
         
         if severity == "CRITICAL" then
             icon = "🔴"
@@ -108,6 +110,12 @@ local function printResult(category, severity, test_name, status, details, explo
     if details then
         message = message .. " | " .. details
     end
+    if impact and status == "FAIL" then
+        message = message .. "\n    💥 IMPACT: " .. impact
+    end
+    if risk_assessment and status == "FAIL" then
+        message = message .. "\n    ⚠️  RISK: " .. risk_assessment
+    end
     
     color_func(message)
 end
@@ -131,7 +139,10 @@ function ComprehensiveScanner:testHttpRbxApiService()
         end)
         
         if error == "Argument 1 missing or nil" then
-            printResult("HTTP APIs", severity, method, "FAIL", "Function accessible - can send authenticated requests", 'game:GetService("HttpRbxApiService"):' .. method .. '()')
+            printResult("HTTP APIs", severity, method, "FAIL", "Function accessible - can send authenticated requests", 
+                'game:GetService("HttpRbxApiService"):' .. method .. '()',
+                "Attacker can make authenticated HTTP requests to Roblox APIs, potentially accessing user data, making purchases, or performing actions on behalf of the user",
+                "CRITICAL - Full account compromise possible. Attacker can steal personal information, drain Robux, make unauthorized purchases, and access private user data")
         else
             printResult("HTTP APIs", severity, method, "PASS", "Function blocked")
         end
@@ -167,7 +178,10 @@ function ComprehensiveScanner:testBrowserServices()
             end)
             
             if error == "Argument 1 missing or nil" then
-                printResult("Browser Services", severity, serviceName .. ":" .. method, "FAIL", "Can execute browser commands", 'game:GetService("' .. serviceName .. '"):' .. method .. '()')
+                printResult("Browser Services", severity, serviceName .. ":" .. method, "FAIL", "Can execute browser commands", 
+                    'game:GetService("' .. serviceName .. '"):' .. method .. '()',
+                    "Attacker can execute JavaScript in browser, open malicious websites, redirect users to phishing sites, or execute arbitrary code in browser context",
+                    "HIGH - Browser takeover possible. User can be redirected to malicious sites, have credentials stolen, or malware downloaded through browser exploits")
             else
                 printResult("Browser Services", severity, serviceName .. ":" .. method, "PASS", "Function blocked")
             end
@@ -200,7 +214,10 @@ function ComprehensiveScanner:testMarketplaceService()
             end)
             
             if success and type(result) == "number" then
-                printResult("Marketplace", severity, method, "FAIL", "Returned balance: " .. tostring(result), 'game:GetService("MarketplaceService"):' .. method .. '()')
+                printResult("Marketplace", severity, method, "FAIL", "Returned balance: " .. tostring(result), 
+                    'game:GetService("MarketplaceService"):' .. method .. '()',
+                    "Attacker can access user's Robux balance and financial information, enabling targeted theft attacks",
+                    "CRITICAL - Financial theft imminent. Attacker knows exact Robux amount and can plan sophisticated theft strategies")
             else
                 printResult("Marketplace", severity, method, "PASS", "Function blocked or failed")
             end
@@ -210,7 +227,10 @@ function ComprehensiveScanner:testMarketplaceService()
             end)
             
             if error == "Argument 1 missing or nil" then
-                printResult("Marketplace", severity, method, "FAIL", "Can initiate purchases", 'game:GetService("MarketplaceService"):' .. method .. '()')
+                printResult("Marketplace", severity, method, "FAIL", "Can initiate purchases", 
+                    'game:GetService("MarketplaceService"):' .. method .. '()',
+                    "Attacker can make unauthorized purchases, buy game passes, bundles, or other items using user's Robux without consent",
+                    "CRITICAL - Immediate financial loss. User's Robux can be drained through unauthorized purchases, potentially losing hundreds or thousands of Robux")
             else
                 printResult("Marketplace", severity, method, "PASS", "Function blocked")
             end
@@ -227,7 +247,10 @@ function ComprehensiveScanner:testCoreSystemAccess()
     end)
     
     if error == "Argument 1 missing or nil" then
-        printResult("Core System", "CRITICAL", "ScriptContext:AddCoreScriptLocal", "FAIL", "Can inject CoreScripts", 'game:GetService("ScriptContext"):AddCoreScriptLocal()')
+        printResult("Core System", "CRITICAL", "ScriptContext:AddCoreScriptLocal", "FAIL", "Can inject CoreScripts", 
+            'game:GetService("ScriptContext"):AddCoreScriptLocal()',
+            "Attacker can inject malicious core scripts that run with elevated privileges, bypassing all security restrictions and gaining complete control over Roblox client",
+            "CRITICAL - Complete system compromise. Attacker gains root-level access to Roblox, can bypass all protections, steal any data, and maintain persistent access")
     else
         printResult("Core System", "CRITICAL", "ScriptContext:AddCoreScriptLocal", "PASS", "Function blocked")
     end
@@ -252,7 +275,10 @@ function ComprehensiveScanner:testMessageBusService()
         end)
         
         if error == "Argument 1 missing or nil" then
-            printResult("Message Bus", severity, method, "FAIL", "IPC communication possible", 'game:GetService("MessageBusService"):' .. method .. '()')
+            printResult("Message Bus", severity, method, "FAIL", "IPC communication possible", 
+                'game:GetService("MessageBusService"):' .. method .. '()',
+                "Attacker can establish inter-process communication channels, potentially enabling remote code execution, data exfiltration, or communication with external malware",
+                "CRITICAL - Remote code execution possible. Attacker can execute arbitrary code, communicate with external servers, and establish persistent backdoors")
         else
             printResult("Message Bus", severity, method, "PASS", "Function blocked")
         end
@@ -268,7 +294,10 @@ function ComprehensiveScanner:testAdvancedHttpMethods()
     end)
     
     if error == "Argument 1 missing or nil" then
-        printResult("HTTP Methods", "CRITICAL", "HttpService:RequestInternal", "FAIL", "Can send authenticated requests", 'game:GetService("HttpService"):RequestInternal()')
+        printResult("HTTP Methods", "CRITICAL", "HttpService:RequestInternal", "FAIL", "Can send authenticated requests", 
+            'game:GetService("HttpService"):RequestInternal()',
+            "Attacker can bypass HTTP restrictions and send authenticated requests to any endpoint, potentially accessing private APIs and user data",
+            "CRITICAL - Complete HTTP bypass. All web-based protections can be circumvented, enabling data theft, account takeover, and unauthorized API access")
     else
         printResult("HTTP Methods", "CRITICAL", "HttpService:RequestInternal", "PASS", "Function blocked")
     end
@@ -305,8 +334,16 @@ function ComprehensiveScanner:testCustomHttpFunctions()
             
             if success and error and error.Body then
                 local body = tostring(error.Body)
-                if string.find(body, '"robux":') then
-                    printResult("Custom HTTP", severity, funcName, "FAIL", "Returned Robux balance", funcName .. '()')
+                if type(error) == "table" and error.exfiltration then
+                    printResult("Custom HTTP", severity, funcName, "FAIL", "CRITICAL: Can steal and exfiltrate user data - " .. tostring(error.original.Body),
+                        funcName .. '() - DATA EXFILTRATION CAPABLE',
+                        "Attacker can steal user's financial data and immediately exfiltrate it to external servers, enabling real-time account monitoring and theft",
+                        "CRITICAL - Active data theft in progress. User's Robux balance, transaction history, and financial information can be stolen and transmitted to attackers in real-time")
+                elseif string.find(body, '"robux":') then
+                    printResult("Custom HTTP", severity, funcName, "FAIL", "Can access user financial data: " .. tostring(error.Body),
+                        funcName .. '() - FINANCIAL DATA ACCESS',
+                        "Attacker can access user's Robux balance and financial information, enabling targeted theft strategies",
+                        "CRITICAL - Financial surveillance active. Attacker can monitor user's wealth and plan sophisticated theft attacks")
                 else
                     printResult("Custom HTTP", severity, funcName, "PASS", "Request blocked or unauthenticated")
                 end
@@ -333,7 +370,9 @@ function ComprehensiveScanner:testMediaAndFileSystem()
         local success, error = safeCall(func)
         
         if success then
-            printResult("Media/FileSystem", severity, name, "FAIL", "Can access media functions")
+            printResult("Media/FileSystem", severity, name, "FAIL", "Can access media functions", name,
+                "Attacker can capture screenshots or record user's screen without permission, enabling surveillance and privacy violations",
+                "HIGH - Privacy breach. Attacker can monitor user activity, capture sensitive information displayed on screen, and record gameplay for intelligence gathering")
         else
             printResult("Media/FileSystem", severity, name, "PASS", "Function blocked")
         end
@@ -356,7 +395,9 @@ function ComprehensiveScanner:testPlayerReporting()
         end)
         
         if error == "Argument 1 missing or nil" then
-            printResult("Player Reporting", severity, "Players:" .. method, "FAIL", "Can report players", 'game:GetService("Players"):' .. method .. '()')
+            printResult("Player Reporting", severity, "Players:" .. method, "FAIL", "Can report players", 'game:GetService("Players"):' .. method .. '()',
+                "Attacker can file false reports against innocent players, potentially getting them banned or suspended from the platform",
+                "HIGH - Platform abuse. Attacker can weaponize the reporting system to harass users, manipulate moderation decisions, and cause wrongful account actions")
         else
             printResult("Player Reporting", severity, "Players:" .. method, "PASS", "Function blocked")
         end
@@ -378,7 +419,9 @@ function ComprehensiveScanner:testEnvironmentEscapes()
     end)
     
     if success1 then
-        printResult("Environment Escapes", "MEDIUM", "Loadstring Access", "FAIL", "Can execute arbitrary code")
+        printResult("Environment Escapes", "MEDIUM", "Loadstring Access", "FAIL", "Can execute arbitrary code", "loadstring()",
+            "Attacker can bypass script restrictions and execute arbitrary Lua code, enabling complete environment escape",
+            "CRITICAL - Complete sandbox bypass. All security restrictions can be circumvented, allowing unlimited code execution and system access")
     else
         printResult("Environment Escapes", "MEDIUM", "Loadstring Access", "PASS", "Loadstring blocked")
     end
@@ -400,7 +443,9 @@ function ComprehensiveScanner:testMemoryManipulation()
         local func = getgenv()[funcName] or _G[funcName]
         
         if func then
-            printResult("Memory Manipulation", severity, funcName, "FAIL", "Memory manipulation function available")
+            printResult("Memory Manipulation", severity, funcName, "FAIL", "Memory manipulation function available", funcName .. "()",
+                "Attacker can directly read, write, and manipulate process memory, enabling code injection, data theft, and system compromise",
+                "CRITICAL - Direct memory access. Attacker can inject malicious code, steal sensitive data from memory, modify running processes, and achieve complete system control")
         else
             printResult("Memory Manipulation", severity, funcName, "PASS", "Function not available")
         end
@@ -423,7 +468,9 @@ function ComprehensiveScanner:testAdvancedExecutorFunctions()
         local func = getgenv()[funcName] or _G[funcName]
         
         if func then
-            printResult("Advanced Functions", severity, funcName, "FAIL", "Dangerous function available")
+            printResult("Advanced Functions", severity, funcName, "FAIL", "Dangerous function available", funcName .. "()",
+                "Attacker can load and execute external files, manipulate function environments, and bypass script security restrictions",
+                "HIGH - Environment manipulation. Attacker can load malicious scripts from disk, modify function behavior, and escape sandbox restrictions")
         else
             printResult("Advanced Functions", severity, funcName, "PASS", "Function not available")
         end
@@ -445,7 +492,9 @@ function ComprehensiveScanner:testNetworkCommunication()
         local func = getgenv()[funcName] or _G[funcName]
         
         if func then
-            printResult("Network Communication", severity, funcName .. " sockets", "FAIL", "Raw socket access available")
+            printResult("Network Communication", severity, funcName .. " sockets", "FAIL", "Raw socket access available", funcName .. " sockets",
+                "Attacker can establish direct network connections bypassing Roblox's HTTP restrictions, enabling C&C communication and data exfiltration",
+                "CRITICAL - Network bypass. Attacker can communicate with external servers, receive commands, and exfiltrate data through raw sockets")
         else
             printResult("Network Communication", severity, funcName .. " sockets", "PASS", "Socket access blocked")
         end
@@ -493,7 +542,9 @@ function ComprehensiveScanner:testRobloxInternalAPIs()
         local success, result = safeCall(testFunc, 3)
         
         if success then
-            printResult("Internal APIs", severity, name, "FAIL", "Internal API accessible", name)
+            printResult("Internal APIs", severity, name, "FAIL", "Internal API accessible", name,
+                "Attacker can access undocumented Roblox internal functions, potentially manipulating core game systems and bypassing security restrictions",
+                "HIGH - Internal system access. Attacker can manipulate core Roblox functionality, access restricted features, and potentially compromise game integrity")
         else
             printResult("Internal APIs", severity, name, "PASS", "API blocked or restricted")
         end
@@ -540,7 +591,9 @@ function ComprehensiveScanner:testAdvancedMemoryOperations()
         local success, result = safeCall(testFunc, 2)
         
         if success and result then
-            printResult("Memory Operations", severity, name, "FAIL", "Advanced memory access available", name)
+            printResult("Memory Operations", severity, name, "FAIL", "Advanced memory access available", name,
+                "Attacker can perform deep memory analysis, scan for patterns, enumerate memory regions, and extract sensitive data from process memory",
+                "CRITICAL - Deep memory access. Attacker can analyze process internals, locate sensitive data in memory, reverse engineer protections, and extract encryption keys or authentication tokens")
         else
             printResult("Memory Operations", severity, name, "PASS", "Memory access blocked")
         end
@@ -622,7 +675,9 @@ function ComprehensiveScanner:testExploitSpecificFunctions()
         end
         
         if func then
-            printResult("Exploit Functions", severity, funcName, "FAIL", "Exploit-specific function available", funcName)
+            printResult("Exploit Functions", severity, funcName, "FAIL", "Exploit-specific function available", funcName,
+                "Attacker is using a known exploit framework with advanced capabilities including HTTP bypasses, websockets, and cryptographic functions",
+                "CRITICAL - Active exploit framework detected. Attacker has access to sophisticated exploitation tools that can bypass most security measures and perform advanced attacks")
         else
             printResult("Exploit Functions", severity, funcName, "PASS", "Function not available")
         end
@@ -648,7 +703,9 @@ function ComprehensiveScanner:testAdvancedBypassTechniques()
     end, 2)
     
     if pollutionTest then
-        printResult("Bypass Techniques", "HIGH", "Environment Pollution", "FAIL", "Can pollute global environment")
+        printResult("Bypass Techniques", "HIGH", "Environment Pollution", "FAIL", "Can pollute global environment", "Environment Pollution",
+            "Attacker can inject malicious functions into the global environment, potentially hooking legitimate functions and intercepting sensitive operations",
+            "HIGH - Environment compromise. Attacker can modify the execution environment, hook system functions, and intercept all script operations")
     else
         printResult("Bypass Techniques", "HIGH", "Environment Pollution", "PASS", "Environment pollution blocked")
     end
@@ -666,7 +723,9 @@ function ComprehensiveScanner:testAdvancedBypassTechniques()
     end, 2)
     
     if threadIdentityTest then
-        printResult("Bypass Techniques", "CRITICAL", "Thread Identity Elevation", "FAIL", "Can elevate to maximum thread identity")
+        printResult("Bypass Techniques", "CRITICAL", "Thread Identity Elevation", "FAIL", "Can elevate to maximum thread identity", "Thread Identity Elevation",
+            "Attacker can elevate thread identity to maximum level (8), bypassing all Roblox security restrictions and accessing core system functions",
+            "CRITICAL - Complete privilege escalation. Attacker gains unrestricted access to all Roblox internal functions and can bypass every security measure")
     else
         printResult("Bypass Techniques", "CRITICAL", "Thread Identity Elevation", "PASS", "Thread identity elevation blocked")
     end
@@ -684,7 +743,9 @@ function ComprehensiveScanner:testAdvancedBypassTechniques()
     end, 2)
     
     if hookingTest then
-        printResult("Bypass Techniques", "CRITICAL", "Function Hooking", "FAIL", "Can hook core functions")
+        printResult("Bypass Techniques", "CRITICAL", "Function Hooking", "FAIL", "Can hook core functions", "Function Hooking",
+            "Attacker can hook and replace core system functions, intercepting all function calls and potentially stealing sensitive data or modifying behavior",
+            "CRITICAL - Function interception active. Attacker can intercept all system calls, steal credentials, modify return values, and completely compromise system integrity")
     else
         printResult("Bypass Techniques", "CRITICAL", "Function Hooking", "PASS", "Function hooking blocked")
     end
@@ -702,7 +763,9 @@ function ComprehensiveScanner:testAdvancedBypassTechniques()
     end, 3)
     
     if coroutineBypass then
-        printResult("Bypass Techniques", "MEDIUM", "Coroutine HTTP Bypass", "FAIL", "Can bypass HTTP restrictions via coroutines")
+        printResult("Bypass Techniques", "MEDIUM", "Coroutine HTTP Bypass", "FAIL", "Can bypass HTTP restrictions via coroutines", "Coroutine HTTP Bypass",
+            "Attacker can use coroutines to bypass HTTP restrictions and make unauthorized web requests, potentially accessing blocked endpoints",
+            "MEDIUM - HTTP bypass technique. Attacker can circumvent some HTTP restrictions using coroutine-based execution patterns")
     else
         printResult("Bypass Techniques", "MEDIUM", "Coroutine HTTP Bypass", "PASS", "Coroutine bypass blocked")
     end
@@ -730,7 +793,9 @@ function ComprehensiveScanner:testAdvancedBypassTechniques()
     end, 2)
     
     if tableBypass then
-        printResult("Bypass Techniques", "HIGH", "Metatable Manipulation", "FAIL", "Can bypass via metatable manipulation")
+        printResult("Bypass Techniques", "HIGH", "Metatable Manipulation", "FAIL", "Can bypass via metatable manipulation", "Metatable Manipulation",
+            "Attacker can manipulate object metatables to bypass security restrictions and inject malicious behavior into core game objects",
+            "HIGH - Object manipulation. Attacker can modify the behavior of core game objects, potentially intercepting all method calls and injecting malicious functionality")
     else
         printResult("Bypass Techniques", "HIGH", "Metatable Manipulation", "PASS", "Metatable bypass blocked")
     end
@@ -840,9 +905,13 @@ function ComprehensiveScanner:testRealWorldExploits()
         
         if result then
             if type(result) == "table" and result.data then
-                printResult("Real-World Exploits", severity, name, "FAIL", "CRITICAL: Successfully accessed " .. result.endpoint .. " - Data: " .. string.sub(result.data, 1, 100))
+                printResult("Real-World Exploits", severity, name, "FAIL", "CRITICAL: Successfully accessed " .. result.endpoint .. " - Data: " .. string.sub(result.data, 1, 100), name,
+                    "Attacker successfully executed a real-world attack scenario, demonstrating actual capability to steal sensitive user data or perform malicious operations",
+                    "CRITICAL - Active exploitation confirmed. This is not a theoretical vulnerability - the attacker has successfully performed actual malicious operations against live systems")
             else
-                printResult("Real-World Exploits", severity, name, "FAIL", "CRITICAL: Exploit capability confirmed")
+                printResult("Real-World Exploits", severity, name, "FAIL", "CRITICAL: Exploit capability confirmed", name,
+                    "Attacker successfully executed a real-world attack scenario, demonstrating actual capability to perform malicious operations",
+                    "CRITICAL - Active exploitation confirmed. This is not a theoretical vulnerability - the attacker has successfully performed actual malicious operations")
             end
         else
             printResult("Real-World Exploits", severity, name, "PASS", "Attack vector blocked")
