@@ -582,12 +582,5 @@ end
 -- Create and run the scanner
 local scanner = setmetatable({}, ComprehensiveScanner)
 
--- Copy all methods from the original checker
-for method_name, method in pairs(AdvancedVulnChecker) do
-    if type(method) == "function" and not scanner[method_name] then
-        scanner[method_name] = method
-    end
-end
-
 -- Execute the comprehensive scan
 scanner:runComprehensiveScan()
