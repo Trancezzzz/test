@@ -6,7 +6,10 @@
 ]]
 
 -- Load extended tests
-local ExtendedTests = loadstring(game:HttpGet("https://raw.githubusercontent.com/Trancezzzz/test/refs/heads/main/extended_vulnerability_test.lua"))()
+local ExtendedTests
+pcall(function()
+    ExtendedTests = loadstring(game:HttpGet("https://raw.githubusercontent.com/Trancezzzz/test/refs/heads/main/extended_vulnerability_test.lua"))()
+end)
 
 local ComprehensiveScanner = {}
 ComprehensiveScanner.__index = ComprehensiveScanner
@@ -893,19 +896,21 @@ function ComprehensiveScanner:runComprehensiveScan()
     self:testEnvironmentEscapes()
     
     -- Extended tests
-    if ExtendedTests then
-        ExtendedTests:testFileSystemAccess()
-        ExtendedTests:testProcessAccess()
-        ExtendedTests:testCodeInjection()
-        ExtendedTests:testRegistryAccess()
-        ExtendedTests:testInputManipulation()
-        ExtendedTests:testCryptographicFunctions()
-        ExtendedTests:testAdvancedHooks()
-        ExtendedTests:testConsoleAccess()
-        ExtendedTests:testWebSocketCommunication()
-        ExtendedTests:testAntiDetection()
-        ExtendedTests:testHardwareAccess()
-        ExtendedTests:testScriptAnalysis()
+    if ExtendedTests and type(ExtendedTests) == "table" then
+        pcall(function() ExtendedTests:testFileSystemAccess() end)
+        pcall(function() ExtendedTests:testProcessAccess() end)
+        pcall(function() ExtendedTests:testCodeInjection() end)
+        pcall(function() ExtendedTests:testRegistryAccess() end)
+        pcall(function() ExtendedTests:testInputManipulation() end)
+        pcall(function() ExtendedTests:testCryptographicFunctions() end)
+        pcall(function() ExtendedTests:testAdvancedHooks() end)
+        pcall(function() ExtendedTests:testConsoleAccess() end)
+        pcall(function() ExtendedTests:testWebSocketCommunication() end)
+        pcall(function() ExtendedTests:testAntiDetection() end)
+        pcall(function() ExtendedTests:testHardwareAccess() end)
+        pcall(function() ExtendedTests:testScriptAnalysis() end)
+    else
+        printResult("Extended Tests", "INFO", "Extended Tests Module", "UNKNOWN", "Extended tests module failed to load - continuing with core tests only")
     end
     
     -- New comprehensive tests
