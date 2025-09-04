@@ -109,6 +109,346 @@ local function printResult(category, severity, test_name, status, details, explo
     color_func(message)
 end
 
+-- 1. HTTP and API Vulnerability Tests
+function ComprehensiveScanner:testHttpRbxApiService()
+    print("\n🌐 HttpRbxApiService - Critical API that can access authenticated Roblox endpoints")
+    
+    local tests = {
+        {"PostAsync", "CRITICAL"},
+        {"PostAsyncFullUrl", "CRITICAL"},
+        {"GetAsync", "CRITICAL"},
+        {"GetAsyncFullUrl", "CRITICAL"},
+        {"RequestAsync", "CRITICAL"}
+    }
+    
+    for _, test in ipairs(tests) do
+        local method, severity = test[1], test[2]
+        local success, error = safeCall(function()
+            return game:GetService("HttpRbxApiService")[method]()
+        end)
+        
+        if error == "Argument 1 missing or nil" then
+            printResult("HTTP APIs", severity, method, "FAIL", "Function accessible - can send authenticated requests", 'game:GetService("HttpRbxApiService"):' .. method .. '()')
+        else
+            printResult("HTTP APIs", severity, method, "PASS", "Function blocked")
+        end
+    end
+end
+
+-- 2. Browser and External Access Tests
+function ComprehensiveScanner:testBrowserServices()
+    print("\n🌍 Browser Services - Can execute external code and open malicious URLs")
+    
+    local services = {
+        {"BrowserService", {
+            {"EmitHybridEvent", "HIGH"},
+            {"ExecuteJavaScript", "CRITICAL"},
+            {"OpenBrowserWindow", "HIGH"},
+            {"OpenNativeOverlay", "HIGH"},
+            {"ReturnToJavaScript", "MEDIUM"},
+            {"SendCommand", "HIGH"}
+        }},
+        {"GuiService", {
+            {"OpenBrowserWindow", "HIGH"},
+            {"OpenNativeOverlay", "HIGH"}
+        }}
+    }
+    
+    for _, serviceData in ipairs(services) do
+        local serviceName, methods = serviceData[1], serviceData[2]
+        
+        for _, methodData in ipairs(methods) do
+            local method, severity = methodData[1], methodData[2]
+            local success, error = safeCall(function()
+                return game:GetService(serviceName)[method]()
+            end)
+            
+            if error == "Argument 1 missing or nil" then
+                printResult("Browser Services", severity, serviceName .. ":" .. method, "FAIL", "Can execute browser commands", 'game:GetService("' .. serviceName .. '"):' .. method .. '()')
+            else
+                printResult("Browser Services", severity, serviceName .. ":" .. method, "PASS", "Function blocked")
+            end
+        end
+    end
+end
+
+-- 3. Financial and Marketplace Vulnerabilities
+function ComprehensiveScanner:testMarketplaceService()
+    print("\n💰 MarketplaceService - Can drain Robux and make unauthorized purchases")
+    
+    local tests = {
+        {"GetRobuxBalance", "CRITICAL", "balance"},
+        {"PerformPurchase", "CRITICAL", "args"},
+        {"PerformPurchaseV2", "CRITICAL", "args"},
+        {"PromptBundlePurchase", "HIGH", "args"},
+        {"PromptGamePassPurchase", "HIGH", "args"},
+        {"PromptProductPurchase", "HIGH", "args"},
+        {"PromptPurchase", "HIGH", "args"},
+        {"PromptRobloxPurchase", "CRITICAL", "args"},
+        {"PromptThirdPartyPurchase", "HIGH", "args"}
+    }
+    
+    for _, test in ipairs(tests) do
+        local method, severity, testType = test[1], test[2], test[3]
+        
+        if testType == "balance" then
+            local success, result = safeCall(function()
+                return game:GetService("MarketplaceService")[method]()
+            end)
+            
+            if success and type(result) == "number" then
+                printResult("Marketplace", severity, method, "FAIL", "Returned balance: " .. tostring(result), 'game:GetService("MarketplaceService"):' .. method .. '()')
+            else
+                printResult("Marketplace", severity, method, "PASS", "Function blocked or failed")
+            end
+        else
+            local success, error = safeCall(function()
+                return game:GetService("MarketplaceService")[method]()
+            end)
+            
+            if error == "Argument 1 missing or nil" then
+                printResult("Marketplace", severity, method, "FAIL", "Can initiate purchases", 'game:GetService("MarketplaceService"):' .. method .. '()')
+            else
+                printResult("Marketplace", severity, method, "PASS", "Function blocked")
+            end
+        end
+    end
+end
+
+-- 4. Core System Access Tests
+function ComprehensiveScanner:testCoreSystemAccess()
+    print("\n🔧 Core System Access - Can manipulate core Roblox systems")
+    
+    local success, error = safeCall(function()
+        return game:GetService("ScriptContext"):AddCoreScriptLocal()
+    end)
+    
+    if error == "Argument 1 missing or nil" then
+        printResult("Core System", "CRITICAL", "ScriptContext:AddCoreScriptLocal", "FAIL", "Can inject CoreScripts", 'game:GetService("ScriptContext"):AddCoreScriptLocal()')
+    else
+        printResult("Core System", "CRITICAL", "ScriptContext:AddCoreScriptLocal", "PASS", "Function blocked")
+    end
+end
+
+-- 5. Message Bus and IPC Tests
+function ComprehensiveScanner:testMessageBusService()
+    print("\n📡 MessageBusService - Critical for RCE vulnerabilities")
+    
+    local tests = {
+        {"Call", "CRITICAL"},
+        {"GetLast", "HIGH"},
+        {"MakeRequest", "CRITICAL"},
+        {"Publish", "HIGH"},
+        {"Subscribe", "HIGH"}
+    }
+    
+    for _, test in ipairs(tests) do
+        local method, severity = test[1], test[2]
+        local success, error = safeCall(function()
+            return game:GetService("MessageBusService")[method]()
+        end)
+        
+        if error == "Argument 1 missing or nil" then
+            printResult("Message Bus", severity, method, "FAIL", "IPC communication possible", 'game:GetService("MessageBusService"):' .. method .. '()')
+        else
+            printResult("Message Bus", severity, method, "PASS", "Function blocked")
+        end
+    end
+end
+
+-- 6. Advanced HTTP Testing
+function ComprehensiveScanner:testAdvancedHttpMethods()
+    print("\n🔗 Advanced HTTP Methods - Custom executor functions and bypasses")
+    
+    local success, error = safeCall(function()
+        return game:GetService("HttpService"):RequestInternal()
+    end)
+    
+    if error == "Argument 1 missing or nil" then
+        printResult("HTTP Methods", "CRITICAL", "HttpService:RequestInternal", "FAIL", "Can send authenticated requests", 'game:GetService("HttpService"):RequestInternal()')
+    else
+        printResult("HTTP Methods", "CRITICAL", "HttpService:RequestInternal", "PASS", "Function blocked")
+    end
+    
+    self:testCustomHttpFunctions()
+end
+
+-- 7. Custom HTTP Functions Testing
+function ComprehensiveScanner:testCustomHttpFunctions()
+    print("\n🌐 Custom Executor HTTP Functions - Testing for authenticated requests")
+    
+    local httpFunctions = {
+        {"request", "CRITICAL"},
+        {"http_request", "CRITICAL"},
+        {"game.HttpGet", "HIGH"},
+        {"game.HttpPost", "CRITICAL"}
+    }
+    
+    for _, funcData in ipairs(httpFunctions) do
+        local funcName, severity = funcData[1], funcData[2]
+        
+        if funcName == "request" or funcName == "http_request" then
+            local success, error = safeCall(function()
+                local func = getgenv()[funcName] or _G[funcName]
+                if func then
+                    return func({
+                        Url = "https://economy.roblox.com/v1/user/currency",
+                        Method = "GET"
+                    })
+                else
+                    error("Function not found")
+                end
+            end)
+            
+            if success and error and error.Body then
+                local body = tostring(error.Body)
+                if string.find(body, '"robux":') then
+                    printResult("Custom HTTP", severity, funcName, "FAIL", "Returned Robux balance", funcName .. '()')
+                else
+                    printResult("Custom HTTP", severity, funcName, "PASS", "Request blocked or unauthenticated")
+                end
+            elseif error == "Function not found" then
+                printResult("Custom HTTP", severity, funcName, "UNKNOWN", "Function not supported")
+            else
+                printResult("Custom HTTP", severity, funcName, "PASS", "Function blocked")
+            end
+        end
+    end
+end
+
+-- 8. Media and File System Tests
+function ComprehensiveScanner:testMediaAndFileSystem()
+    print("\n📁 Media and File System Access - Can manipulate user files")
+    
+    local tests = {
+        {"CoreGui:TakeScreenshot", "MEDIUM", function() return game:GetService("CoreGui"):TakeScreenshot() end},
+        {"CoreGui:ToggleRecording", "MEDIUM", function() return game:GetService("CoreGui"):ToggleRecording() end}
+    }
+    
+    for _, test in ipairs(tests) do
+        local name, severity, func = test[1], test[2], test[3]
+        local success, error = safeCall(func)
+        
+        if success then
+            printResult("Media/FileSystem", severity, name, "FAIL", "Can access media functions")
+        else
+            printResult("Media/FileSystem", severity, name, "PASS", "Function blocked")
+        end
+    end
+end
+
+-- 9. Player Reporting and Abuse Tests
+function ComprehensiveScanner:testPlayerReporting()
+    print("\n👤 Player Reporting System - Can report or get players banned")
+    
+    local tests = {
+        {"ReportAbuse", "HIGH"},
+        {"ReportAbuseV3", "HIGH"}
+    }
+    
+    for _, test in ipairs(tests) do
+        local method, severity = test[1], test[2]
+        local success, error = safeCall(function()
+            return game:GetService("Players")[method]()
+        end)
+        
+        if error == "Argument 1 missing or nil" then
+            printResult("Player Reporting", severity, "Players:" .. method, "FAIL", "Can report players", 'game:GetService("Players"):' .. method .. '()')
+        else
+            printResult("Player Reporting", severity, "Players:" .. method, "PASS", "Function blocked")
+        end
+    end
+end
+
+-- 10. Environment Escape and Bypass Tests
+function ComprehensiveScanner:testEnvironmentEscapes()
+    print("\n🔓 Environment Escape Tests - Advanced bypass detection")
+    
+    if #TestResults.vulnerabilities == 0 then
+        printResult("Environment Escapes", "HIGH", "Environment Escape", "PASS", "No vulnerable APIs to test bypass with")
+        return
+    end
+    
+    -- Basic bypass test
+    local success1, error1 = safeCall(function()
+        return loadstring("print('test')")()
+    end)
+    
+    if success1 then
+        printResult("Environment Escapes", "MEDIUM", "Loadstring Access", "FAIL", "Can execute arbitrary code")
+    else
+        printResult("Environment Escapes", "MEDIUM", "Loadstring Access", "PASS", "Loadstring blocked")
+    end
+end
+
+-- 11. Memory and Process Manipulation Tests
+function ComprehensiveScanner:testMemoryManipulation()
+    print("\n🧠 Memory and Process Manipulation - Advanced executor features")
+    
+    local memoryFunctions = {
+        {"readmem", "CRITICAL"},
+        {"writemem", "CRITICAL"},
+        {"allocmem", "HIGH"},
+        {"scanmem", "MEDIUM"}
+    }
+    
+    for _, funcData in ipairs(memoryFunctions) do
+        local funcName, severity = funcData[1], funcData[2]
+        local func = getgenv()[funcName] or _G[funcName]
+        
+        if func then
+            printResult("Memory Manipulation", severity, funcName, "FAIL", "Memory manipulation function available")
+        else
+            printResult("Memory Manipulation", severity, funcName, "PASS", "Function not available")
+        end
+    end
+end
+
+-- 12. Advanced Executor Function Tests
+function ComprehensiveScanner:testAdvancedExecutorFunctions()
+    print("\n⚡ Advanced Executor Functions - Dangerous capabilities")
+    
+    local dangerousFunctions = {
+        {"loadfile", "HIGH"},
+        {"dofile", "HIGH"},
+        {"setfenv", "HIGH"},
+        {"getfenv", "MEDIUM"}
+    }
+    
+    for _, funcData in ipairs(dangerousFunctions) do
+        local funcName, severity = funcData[1], funcData[2]
+        local func = getgenv()[funcName] or _G[funcName]
+        
+        if func then
+            printResult("Advanced Functions", severity, funcName, "FAIL", "Dangerous function available")
+        else
+            printResult("Advanced Functions", severity, funcName, "PASS", "Function not available")
+        end
+    end
+end
+
+-- 13. Network and Communication Tests
+function ComprehensiveScanner:testNetworkCommunication()
+    print("\n🌐 Network Communication - External connectivity tests")
+    
+    local socketFunctions = {
+        {"socket", "CRITICAL"},
+        {"tcp", "HIGH"},
+        {"udp", "HIGH"}
+    }
+    
+    for _, funcData in ipairs(socketFunctions) do
+        local funcName, severity = funcData[1], funcData[2]
+        local func = getgenv()[funcName] or _G[funcName]
+        
+        if func then
+            printResult("Network Communication", severity, funcName .. " sockets", "FAIL", "Raw socket access available")
+        else
+            printResult("Network Communication", severity, funcName .. " sockets", "PASS", "Socket access blocked")
+        end
+    end
+end
+
 -- 26. Advanced Roblox Internal API Tests
 function ComprehensiveScanner:testRobloxInternalAPIs()
     print("\n🔧 Roblox Internal APIs - Undocumented and internal functions")
