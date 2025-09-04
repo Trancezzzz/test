@@ -6,7 +6,7 @@
 ]]
 
 -- Load extended tests
-local ExtendedTests = loadstring(game:HttpGet("https://raw.githubusercontent.com/your-repo/extended_vulnerability_tests.lua"))()
+local ExtendedTests = loadstring(game:HttpGet("https://raw.githubusercontent.com/Trancezzzz/test/refs/heads/main/extended_vulnerability_test.lua"))()
 
 local ComprehensiveScanner = {}
 ComprehensiveScanner.__index = ComprehensiveScanner
