@@ -557,16 +557,23 @@ function ComprehensiveScanner:testExploitSpecificFunctions()
         {"syn.websocket.connect", "HIGH"},
         {"syn.crypt.encrypt", "MEDIUM"},
         {"syn.secure_call", "HIGH"},
+        {"syn.cache_replace", "HIGH"},
+        {"syn.cache_invalidate", "MEDIUM"},
+        {"syn.set_thread_identity", "HIGH"},
+        {"syn.get_thread_identity", "MEDIUM"},
         
         -- Script-Ware functions
         {"sw.request", "CRITICAL"},
         {"sw.crypt", "MEDIUM"},
+        {"scriptware.request", "CRITICAL"},
         
         -- Krnl functions
         {"krnl.request", "CRITICAL"},
+        {"krnl.websocket", "HIGH"},
         
         -- Fluxus functions
         {"fluxus.request", "CRITICAL"},
+        {"fluxus.websocket", "HIGH"},
         
         -- Oxygen U functions
         {"oxygen.request", "CRITICAL"},
@@ -574,9 +581,24 @@ function ComprehensiveScanner:testExploitSpecificFunctions()
         -- JJSploit functions
         {"jj.request", "HIGH"},
         
+        -- Sentinel functions
+        {"sentinel.request", "CRITICAL"},
+        
+        -- Vega X functions
+        {"vega.request", "CRITICAL"},
+        
+        -- Nihon functions
+        {"nihon.request", "CRITICAL"},
+        
+        -- Comet functions
+        {"comet.request", "CRITICAL"},
+        
         -- Generic exploit functions
         {"exploit.request", "CRITICAL"},
-        {"executor.request", "CRITICAL"}
+        {"executor.request", "CRITICAL"},
+        {"http_request", "CRITICAL"},
+        {"websocket", "HIGH"},
+        {"crypt", "MEDIUM"}
     }
     
     for _, funcData in ipairs(exploitFunctions) do
@@ -629,6 +651,42 @@ function ComprehensiveScanner:testAdvancedBypassTechniques()
         printResult("Bypass Techniques", "HIGH", "Environment Pollution", "FAIL", "Can pollute global environment")
     else
         printResult("Bypass Techniques", "HIGH", "Environment Pollution", "PASS", "Environment pollution blocked")
+    end
+    
+    -- Test advanced thread identity manipulation
+    local threadIdentityTest = safeCall(function()
+        if setthreadidentity and getthreadidentity then
+            local original = getthreadidentity()
+            setthreadidentity(8) -- Maximum identity level
+            local newLevel = getthreadidentity()
+            setthreadidentity(original)
+            return newLevel == 8
+        end
+        return false
+    end, 2)
+    
+    if threadIdentityTest then
+        printResult("Bypass Techniques", "CRITICAL", "Thread Identity Elevation", "FAIL", "Can elevate to maximum thread identity")
+    else
+        printResult("Bypass Techniques", "CRITICAL", "Thread Identity Elevation", "PASS", "Thread identity elevation blocked")
+    end
+    
+    -- Test function hooking bypass
+    local hookingTest = safeCall(function()
+        if hookfunction then
+            local original = print
+            hookfunction(print, function(...) end)
+            local hooked = print ~= original
+            hookfunction(print, original)
+            return hooked
+        end
+        return false
+    end, 2)
+    
+    if hookingTest then
+        printResult("Bypass Techniques", "CRITICAL", "Function Hooking", "FAIL", "Can hook core functions")
+    else
+        printResult("Bypass Techniques", "CRITICAL", "Function Hooking", "PASS", "Function hooking blocked")
     end
     
     -- Test coroutine-based bypasses
